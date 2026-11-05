@@ -529,7 +529,7 @@ with st.sidebar:
         index=["Groq", "OpenAI"].index(st.session_state.api_provider),
         on_change=lambda: setattr(st.session_state, "api_provider", st.session_state.api_provider_select)
     )
-        st.session_state.api_key = st.secrets.get("GROQ_API_KEY", "")
+    st.session_state.api_key = st.secrets.get("GROQ_API_KEY", "")
     
     # Agent 配置区域
     with st.expander(t["agent_settings"], expanded=True):
