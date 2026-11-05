@@ -529,7 +529,11 @@ with st.sidebar:
         index=["Groq", "OpenAI"].index(st.session_state.api_provider),
         on_change=lambda: setattr(st.session_state, "api_provider", st.session_state.api_provider_select)
     )
-    st.session_state.api_key = st.text_input(t["api_key"], type="password", value=st.session_state.api_key)
+    if "GROQ_API_KEY" in st.secrets:
+    st.session_state.api_key = st.secrets["GROQ_API_KEY"]
+    st.success("✅ API 密钥已安全配置")
+else:
+    st.session_state.api_key = st.text_input(t["api_key"], type="password", value="")
     
     st.divider()
     
