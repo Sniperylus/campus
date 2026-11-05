@@ -471,25 +471,45 @@ def ai_smart_match_and_notify(new_info, new_type, current_user):
 
 # 原有的 AI 函数
 def ai_recognize_image(image_file, api_key, provider, lang):
-    if not api_key: return {"category": t["categories"][0], "name": "-", "color": "-", "desc": "-"}
+    if not api_key:
+        return {"category": t["categories"][0], "name": "-", "color": "-", "desc": "-"}
     try:
         from openai import OpenAI
         cfg = API_CONFIG[provider]
         client = OpenAI(api_key=api_key, base_url=cfg["base_url"])
-        img = Image.open(image_file); buf = BytesIO(); img.save(buf, format="PNG")
+        img = Image.open(image_file)
+        buf = BytesIO()
+        img.save(buf, format="PNG")
         b64 = base64.b64encode(buf.getvalue()).decode()
         prompt = {
             "中文": "识别图中物品，返回严格JSON：category(类别), name(名称), color(颜色), desc(特征)",
             "한국어": "사진 속 물건을 인식하고 JSON으로만 반환: category, name, color, desc",
             "English": "Identify the item in the image, return strict JSON only: category, name, color, desc"
         }[lang]
+        
+        # 增加 max_tokens 防止截断
         res = client.chat.completions.create(
-            model=cfg["vision_model"],
-            messages=[{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}],
-            temperature=0
+            model="llama-3.2-11b-vision-preview", # 确保使用的是当前可用的视觉模型
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
+            ]}],
+            temperature=0,
+            max_tokens=200
         )
-        return json.loads(res.choices[0].message.content)
-    except Exception:
+        
+        # 🚨 核心修复：清理大模型返回的 Markdown 标记（比如 ```json ）
+        content = res.choices[0].message.content.strip()
+        if content.startswith("```json"):
+            content = content.replace("```json", "", 1)
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+        
+        return json.loads(content)
+        
+    except Exception as e:
+        st.error(f"⚠️ 识别出错啦，请联系管理员查看日志: {e}")
         return {"category": t["categories"][0], "name": "-", "color": "-", "desc": "-"}
 
 def generate_post_text(info, lang, api_key, provider):
